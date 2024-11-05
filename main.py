@@ -1,8 +1,5 @@
-# Open AI
 import whisper
-# YouTube 
 import yt_dlp
-
 import sys
 
 class VideoDownloader():
