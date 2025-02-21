@@ -1,50 +1,43 @@
-# Open AI
-import whisper
-# YouTube 
+#!/usr/bin/env python3
 import yt_dlp
-
 import sys
+import os
 
-class VideoDownloader():
+def progress_hook(d):
+    if d['status'] == 'downloading':
+        downloaded = d.get('downloaded_bytes', 0)
+        total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
+        if total:
+            percent = downloaded / total * 100
+            print(f"Downloading: {percent:.1f}% complete", end='\r')
+    elif d['status'] == 'finished':
+        print("\nDownload complete, now post-processing...")
 
-    def __init__(self):
-        self.default_opts = {
-            'verbose': False,
-            'format_sort': ['res:720', 'ext:mp4:m4a']
-        }
+def download_video(video_url: str):
+    # Ensure the downloads directory exists
+    download_dir = 'downloads'
+    os.makedirs(download_dir, exist_ok=True)
 
-    def download(self, video_url: str):
-        with yt_dlp.YoutubeDL(self.default_opts) as ydl:
-            info_dict = ydl.extract_info(video_url, download=True)
-            output_filename = ydl.prepare_filename(info_dict)
-            return output_filename
-
-class VideoTranscriber():    
-
-    def __init__(self, model="base"):
-        self.model = model
-
-    def mp4_to_text(self, file_path: str): 
-        model = whisper.load_model(self.model)
-        result = model.transcribe(file_path)
-        return result["text"]
-
-
-def main(): 
-    file_name = sys.argv[1]
-
-    downloader = VideoDownloader()
-
-    transcriber = VideoTranscriber()
-
-    file_name = downloader.download(file_name)
-
-    transcript = transcriber.mp4_to_text(file_name)
-
-    print(transcript)
+    # Set options for downloading video as MP4 with progress hooks.
+    ydl_opts = {
+        'outtmpl': os.path.join(download_dir, '%(title)s.%(ext)s'),
+        'noplaylist': True,
+        'progress_hooks': [progress_hook],
+    }
     
-    with open('transcript.txt', 'w') as f:
-        f.write(transcript)
-        
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([video_url])
+    except Exception as e:
+        print(f"\nAn error occurred while downloading the video: {e}")
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python script.py <video_url>")
+        sys.exit(1)
+
+    video_url = sys.argv[1]
+    download_video(video_url)
+
 if __name__ == '__main__':
-    main()    
+    main()
