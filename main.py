@@ -17,8 +17,6 @@ def download_video(video_url: str):
     # Ensure the downloads directory exists
     download_dir = 'downloads'
     os.makedirs(download_dir, exist_ok=True)
-
-    # Set options for downloading video as MP4 with progress hooks.
     ydl_opts = {
         'outtmpl': os.path.join(download_dir, '%(title)s.%(ext)s'),
         'noplaylist': True,
