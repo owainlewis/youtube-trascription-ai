@@ -1,41 +1,40 @@
 #!/usr/bin/env python3
-import yt_dlp
 import sys
-import os
-
-def progress_hook(d):
-    if d['status'] == 'downloading':
-        downloaded = d.get('downloaded_bytes', 0)
-        total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
-        if total:
-            percent = downloaded / total * 100
-            print(f"Downloading: {percent:.1f}% complete", end='\r')
-    elif d['status'] == 'finished':
-        print("\nDownload complete, now post-processing...")
-
-def download_video(video_url: str):
-    # Ensure the downloads directory exists
-    download_dir = 'downloads'
-    os.makedirs(download_dir, exist_ok=True)
-    ydl_opts = {
-        'outtmpl': os.path.join(download_dir, '%(title)s.%(ext)s'),
-        'noplaylist': True,
-        'progress_hooks': [progress_hook],
-    }
-    
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([video_url])
-    except Exception as e:
-        print(f"\nAn error occurred while downloading the video: {e}")
+from downloader import download_video
+from transcriber import transcribe_video
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python script.py <video_url>")
+        print("Usage: python main.py <video_url> [--download-only] [whisper_model]")
+        print("Available whisper models: tiny, base, small, medium, large")
         sys.exit(1)
 
     video_url = sys.argv[1]
-    download_video(video_url)
+    download_only = "--download-only" in sys.argv
+    
+    # Remove --download-only from args if present to not interfere with model name
+    args = [arg for arg in sys.argv if arg != "--download-only"]
+    model_name = args[2] if len(args) > 2 else "base"
+
+    # Download the video
+    video_path = download_video(video_url)
+    if not video_path:
+        sys.exit(1)
+    
+    if download_only:
+        print(f"\nVideo downloaded successfully to: {video_path}")
+        return
+
+    # Transcribe the video
+    try:
+        transcription = transcribe_video(video_path, model_name)
+        print("\nTranscription:")
+        print("-" * 80)
+        print(transcription)
+        print("-" * 80)
+    except Exception as e:
+        print(f"An error occurred during transcription: {e}")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
